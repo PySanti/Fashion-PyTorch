@@ -1,5 +1,6 @@
 from torchvision import datasets
 from utils.convert_dataset import convert_dataset
+from utils.show_image import show_image
 
 train_dataset = datasets.FashionMNIST(
     root='./data',
@@ -17,5 +18,4 @@ test_dataset = datasets.FashionMNIST(
 X_train,Y_train = convert_dataset(train_dataset)
 X_test,Y_test = convert_dataset(test_dataset)
 
-
-
+show_image(X_train[29])
