@@ -8,4 +8,4 @@ def convert_dataset(dataset):
     mean, std = 0.2860, 0.3530  # Precalculados para FashionMNIST
     images = (images - mean) / std
     
-    return images, labels.unsqueeze(1)
+    return images, labels
