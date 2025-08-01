@@ -177,7 +177,7 @@ Al ser una imagen en escala de grises (con dos canales), no es necesario utiliza
 
 Creamos una funcion usando *matplotlib* para poder visualizar las imagenes, son asi:
 
-[imagen no encontrada](./images/img_1.png)
+![imagen no encontrada](./images/img_1.png)
 
 Las etiquetas son las siguientes:
 
