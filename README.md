@@ -10,6 +10,8 @@ Luego, buscaremos implementar conceptos relacionados con la implementacion avanz
 
 # Preprocesamiento
 
+## Visualizacion del dataset
+
 Primeramente, utilizando el siguiente codigo cargamos el conjunto de datos y revisamos el shape 
 
 ```
@@ -193,6 +195,28 @@ Las etiquetas son las siguientes:
 | 7        | Sneaker        |
 | 8        | Bag            |
 | 9        | Ankle boot     |
+
+## Escalado
+
+Utilizamos *normalizacion* y *estandarizacion* respectivamente para escalar los datos:
+
+```
+import torch
+import numpy as np
+
+def convert_dataset(dataset):
+    images = torch.stack([torch.tensor(np.array(img).astype('float32')) / 255.0 for img, _ in dataset])
+    labels = torch.tensor([label for _, label in dataset])
+    
+    mean, std = 0.2860, 0.3530  # Precalculados para FashionMNIST
+    images = (images - mean) / std
+    
+    return images.to('cuda'), labels.unsqueeze(1).to('cuda')
+```
+
+De este modo logramos que todas las features (pixeles) esten en la misma escala para todas las muestras.
+
+## Division del conjunto de datos
 
 # Construccion de arquitectura
 
