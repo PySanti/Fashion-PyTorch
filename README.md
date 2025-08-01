@@ -175,7 +175,7 @@ Cada imagen tiene la siguiente forma:
 
 Al ser una imagen en escala de grises (con dos canales), no es necesario utilizar *embeddings* avanzados.
 
-Creamos una funcion usando *matplotlib* para poder visualizar las imagenes, son asi:
+Creamos una funcion usando *matplotlib* para poder visualizar las imagenes. La siguiente imagen es de la clase 4:
 
 ![imagen no encontrada](./images/img_1.png)
 

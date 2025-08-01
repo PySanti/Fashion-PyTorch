@@ -19,3 +19,4 @@ X_train,Y_train = convert_dataset(train_dataset)
 X_test,Y_test = convert_dataset(test_dataset)
 
 show_image(X_train[29])
+print(Y_train[29])
