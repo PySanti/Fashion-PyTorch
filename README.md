@@ -782,7 +782,7 @@ Test acc : 87.61867088607595
 ```
 
 
-![imagen no encontrada](./images/overfitting5.png.png)
+![imagen no encontrada](./images/overfitting5.png)
 
 ## *Mas mejoras
 
