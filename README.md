@@ -833,17 +833,6 @@ class MLP(torch.nn.Module):
 2- Se aumento el tamanio del batch a 256.
 
 
-```
-Epoca actual : 80/80
-        Train batches : 188
-        Train loss : 0.27
-        Val acc: 89.53
-        Val loss : 0.29
-        Diff: 6.11
-Test acc : 88.515625
-```
-
-![imagen no encontrada](./images/overfitting6.png)
 
 ## LR Scheduling
 
@@ -860,5 +849,18 @@ Se implemento `CosineAnnealingLR` para actualizar el LR con un ratio cosenoidal.
 ```
 
 El LR llegara a su minimo 2 veces por cada epoca.
+
+
+```
+Epoca actual : 80/80
+        Train batches : 188
+        Train loss : 0.27
+        Val acc: 89.53
+        Val loss : 0.29
+        Diff: 6.11
+Test acc : 88.515625
+```
+
+![imagen no encontrada](./images/overfitting6.png)
 
 ## Hypertunning
