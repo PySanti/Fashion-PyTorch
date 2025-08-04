@@ -53,8 +53,12 @@ mlp = MLP().to('cuda')
 loss = torch.nn.CrossEntropyLoss(reduction='mean')
 optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001, weight_decay=1e-2)
 
+
 val_losses = np.array([])
 train_losses = np.array([])
+
+
+
 
 
 for ep in range(EPOCHS+1):
@@ -77,16 +81,22 @@ for ep in range(EPOCHS+1):
     # validacion
     mlp.eval()
     batches_val_loss = np.array([])
+    correct_val_samples = np.array([])
 
     with torch.no_grad():
         for (X_val_batch, Y_val_batch) in val_loader:
             X_val_batch = X_val_batch.float()
-            batches_val_loss = np.append(batches_val_loss, loss(mlp(X_val_batch), Y_val_batch).item())
+            outputs = mlp(X_val_batch)
+            batches_val_loss = np.append(batches_val_loss, loss(outputs, Y_val_batch).item())
+            _, predicted = torch.max(outputs, 1)
+            correct_val_samples = np.append(correct_val_samples, ((predicted == Y_val_batch).sum().item()/BATCH_SIZE)*100)
 
-
+    correct_val_samples = correct_val_samples[:-1]
+    batches_val_loss = batches_val_loss[:-1]
     print(f'Epoca actual : {ep}/{EPOCHS}')
     print(f"\tTrain batches : {len(batches_train_loss)}")
     print(f'\tTrain loss : {batches_train_loss.mean()}')
+    print(f"\tVal acc: {correct_val_samples.mean()}")
     print(f'\tVal loss : {batches_val_loss.mean()}')
     print(f"\tDiff: {((batches_val_loss.mean())*100)/(batches_train_loss.mean())-100}")
 
