@@ -688,6 +688,48 @@ Epoca actual : 39/40
 
 ![imagen no encontrada](./images/overfitting2.png)
 
+Luego, implementamos `Mish`, `Dropout` y `Adam`:
 
+```
+# main.py
+
+optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001, weight_decay=1e-2)
+
+# utils/MLP.py
+
+import torch
+class MLP(torch.nn.Module):
+    def __init__(self, input_shape=(28,28)):
+        super(MLP, self).__init__()
+        self.flat_layer = torch.nn.Flatten()
+        self.hl1 = torch.nn.Linear(input_shape[0]*input_shape[1], 120)
+        self.hl2 = torch.nn.Linear(120, 72)
+        self.hl3 = torch.nn.Linear(72, 48)
+        self.out_layer = torch.nn.Linear(48, 10)
+        self.act = torch.nn.Mish()
+        self.drop1 = torch.nn.Dropout(p=0.3)
+        self.drop2 = torch.nn.Dropout(p=0)
+        self.drop3 = torch.nn.Dropout(p=0)
+
+    def forward(self, x):
+        out = self.flat_layer(x)
+        out = self.drop1(self.act(self.hl1(out)))
+        out = self.drop2(self.act(self.hl2(out)))
+        out = self.drop3(self.act(self.hl3(out)))
+        out = self.out_layer(out)
+        return out
+
+```
+Resultados luego de 40 epocas:
+
+```
+Epoca actual : 40/40
+        Train batches : 469
+        Train loss : 0.38317937310189326
+        Val loss : 0.4062134183943272
+        Diff: 6.011295729717887
+```
+
+![imagen no encontrada](./images/overfitting3.png)
 
 # Implementacion de tecnicas

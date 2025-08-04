@@ -51,7 +51,7 @@ val_loader = torch.utils.data.DataLoader(
 
 mlp = MLP().to('cuda')
 loss = torch.nn.CrossEntropyLoss(reduction='mean')
-optimizer = torch.optim.RMSprop(mlp.parameters(), lr=0.0001, momentum=0.9, weight_decay=1e-2)
+optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001, weight_decay=1e-2)
 
 val_losses = np.array([])
 train_losses = np.array([])
