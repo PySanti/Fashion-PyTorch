@@ -768,3 +768,23 @@ test_loader = torch.utils.data.DataLoader(
 
 
 ```
+
+Luego refactorizamos todo el proyecto para facilitar la seleccion de hiperparametros mas adelante. Estos son los resultados actuales:
+
+```
+Epoca actual : 40/40
+        Train batches : 375
+        Train loss : 0.35
+        Val acc: 88.88
+        Val loss : 0.35
+        Diff: 0.16
+Test acc : 87.61867088607595
+```
+
+
+![imagen no encontrada](./images/overfitting5.png.png)
+
+
+## LR Scheduling
+
+## Hypertunning
