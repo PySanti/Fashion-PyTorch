@@ -37,5 +37,3 @@ class MLP(torch.nn.Module):
         torch.nn.init.kaiming_normal_(self.hl3.weight, nonlinearity='relu')
         torch.nn.init.kaiming_normal_(self.out_layer.weight)
 
-
-

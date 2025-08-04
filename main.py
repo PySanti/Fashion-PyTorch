@@ -46,7 +46,7 @@ train_loader = torch.utils.data.DataLoader(
         shuffle=True)
 val_loader = torch.utils.data.DataLoader(
         dataset=MyDataset(X_val, Y_val),
-        batch_size=BATCH_SIZE,
+        batch_size=64,
         shuffle=True)
 
 mlp = MLP().to('cuda')
@@ -56,10 +56,6 @@ optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001, weight_decay=1e-2)
 
 val_losses = np.array([])
 train_losses = np.array([])
-
-
-
-
 
 for ep in range(EPOCHS+1):
 
@@ -89,10 +85,8 @@ for ep in range(EPOCHS+1):
             outputs = mlp(X_val_batch)
             batches_val_loss = np.append(batches_val_loss, loss(outputs, Y_val_batch).item())
             _, predicted = torch.max(outputs, 1)
-            correct_val_samples = np.append(correct_val_samples, ((predicted == Y_val_batch).sum().item()/BATCH_SIZE)*100)
+            correct_val_samples = np.append(correct_val_samples, ((predicted == Y_val_batch).sum().item()/X_val_batch.shape[0])*100)
 
-    correct_val_samples = correct_val_samples[:-1]
-    batches_val_loss = batches_val_loss[:-1]
     print(f'Epoca actual : {ep}/{EPOCHS}')
     print(f"\tTrain batches : {len(batches_train_loss)}")
     print(f'\tTrain loss : {batches_train_loss.mean():.2f}')
