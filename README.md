@@ -590,3 +590,83 @@ Epoca actual : 40/40
 
 
 ![imagen no encontrada](./images/overfitting4.png)
+
+## Wigths Initialization
+
+Implementamos He Initialization:
+
+
+```
+# MPL.py
+
+    def __init__(self, ...):
+        ...
+        self._init_weigths()
+
+    def _init_weigths(self):
+        torch.nn.init.kaiming_normal_(self.hl1.weight, nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.hl2.weight, nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.hl3.weight, nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.out_layer.weight)
+```
+
+Estos fueron los resultados despues de 40 epocas:
+
+```
+Epoca actual : 40/40
+        Train batches : 469
+        Train loss : 0.34870541280012396
+        Val acc: 87.03926282051282
+        Val loss : 0.3858472376297682
+        Diff: 10.65134737410392
+```
+
+Cabe descatar que implementamos la verificacion del accuracy en el conjunto de validacion y una pequenia modificacion para evitar sesgos en el calculo de estadisticas para el conjunto de validacion:
+
+```
+# main.py 
+
+...
+
+for ep in range(EPOCHS+1):
+
+    # entrenamiento
+
+    batches_train_loss = np.array([])
+    mlp.train()
+
+    for (X_train_batch, Y_train_batch) in train_loader:
+        X_train_batch = X_train_batch.float()
+        outputs = mlp(X_train_batch)
+        batch_loss = loss(outputs, Y_train_batch)
+        optimizer.zero_grad()
+        batch_loss.backward()
+        optimizer.step()
+        batches_train_loss = np.append(batches_train_loss, batch_loss.item())
+
+
+    # validacion
+    mlp.eval()
+    batches_val_loss = np.array([])
+    correct_val_samples = np.array([])
+
+    with torch.no_grad():
+        for (X_val_batch, Y_val_batch) in val_loader:
+            X_val_batch = X_val_batch.float()
+            outputs = mlp(X_val_batch)
+            batches_val_loss = np.append(batches_val_loss, loss(outputs, Y_val_batch).item())
+            _, predicted = torch.max(outputs, 1)
+            correct_val_samples = np.append(correct_val_samples, ((predicted == Y_val_batch).sum().item()/BATCH_SIZE)*100)
+
+    correct_val_samples = correct_val_samples[:-1]
+    batches_val_loss = batches_val_loss[:-1]
+    print(f'Epoca actual : {ep}/{EPOCHS}')
+    print(f"\tTrain batches : {len(batches_train_loss)}")
+    print(f'\tTrain loss : {batches_train_loss.mean()}')
+    print(f"\tVal acc: {correct_val_samples.mean()}")
+    print(f'\tVal loss : {batches_val_loss.mean()}')
+    print(f"\tDiff: {((batches_val_loss.mean())*100)/(batches_train_loss.mean())-100}")
+
+    val_losses = np.append(val_losses, batches_val_loss.mean())
+    train_losses = np.append(train_losses, batches_train_loss.mean())
+```

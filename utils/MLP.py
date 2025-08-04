@@ -20,6 +20,9 @@ class MLP(torch.nn.Module):
         self.bn2 = torch.nn.BatchNorm1d(self.hl2.out_features)
         self.bn3 = torch.nn.BatchNorm1d(self.hl3.out_features)
 
+        # inicializacion de pesos
+        self._init_weigths()
+
     def forward(self, x):
         out = self.flat_layer(x)
         out = self.drop1(self.act(self.bn1(self.hl1(out))))
@@ -27,6 +30,12 @@ class MLP(torch.nn.Module):
         out = self.drop3(self.act(self.bn3(self.hl3(out))))
         out = self.out_layer(out)
         return out
+    
+    def _init_weigths(self):
+        torch.nn.init.kaiming_normal_(self.hl1.weight, nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.hl2.weight, nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.hl3.weight, nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.out_layer.weight)
 
 
 

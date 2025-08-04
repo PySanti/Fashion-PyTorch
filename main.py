@@ -95,10 +95,10 @@ for ep in range(EPOCHS+1):
     batches_val_loss = batches_val_loss[:-1]
     print(f'Epoca actual : {ep}/{EPOCHS}')
     print(f"\tTrain batches : {len(batches_train_loss)}")
-    print(f'\tTrain loss : {batches_train_loss.mean()}')
-    print(f"\tVal acc: {correct_val_samples.mean()}")
-    print(f'\tVal loss : {batches_val_loss.mean()}')
-    print(f"\tDiff: {((batches_val_loss.mean())*100)/(batches_train_loss.mean())-100}")
+    print(f'\tTrain loss : {batches_train_loss.mean():.2f}')
+    print(f"\tVal acc: {correct_val_samples.mean():.2f}")
+    print(f'\tVal loss : {batches_val_loss.mean():.2f}')
+    print(f"\tDiff: {((batches_val_loss.mean())*100)/(batches_train_loss.mean())-100:.2f}")
 
     val_losses = np.append(val_losses, batches_val_loss.mean())
     train_losses = np.append(train_losses, batches_train_loss.mean())
