@@ -670,3 +670,101 @@ for ep in range(EPOCHS+1):
     val_losses = np.append(val_losses, batches_val_loss.mean())
     train_losses = np.append(train_losses, batches_train_loss.mean())
 ```
+
+## * Mejoras del codigo generales
+
+Se implementaron algunas modificaciones generales para generar un poco los resultados y las buenas practicas:
+
+1- Mejora en la division del conjunto de datos:
+
+Previamente se estaba obteniendo el conjunto de de validacion a partir del de test, ahora lo calculamos a partir del de train:
+
+```
+X_train, X_val,Y_train, Y_val = train_test_split(X_train, Y_train, test_size=0.2, random_state=42, stratify=Y_train)
+```
+
+2- Modificacion del parametro nonlinearity en He Initialization:
+
+```
+    def _init_weigths(self):
+        torch.nn.init.kaiming_normal_(self.hl1.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.hl2.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.hl3.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.out_layer.weight)
+
+```
+
+3- Implementacion de calculo de accuracy para Test:
+
+```
+# ...
+
+test_loader = torch.utils.data.DataLoader(
+        dataset=TensorDataset(X_test, Y_test),
+        batch_size=128,
+        shuffle=True)
+
+# ...
+
+# test accuracy
+test_acc = np.array([])
+for (X_test_batch, Y_test_batch) in test_loader:
+    outputs = mlp(X_test_batch)
+    test_acc = np.append(test_acc, accuracy(outputs, Y_test_batch))
+print(f"Test acc : {test_acc.mean()}")
+plot_loss(train_losses, val_losses)
+
+```
+
+4- Se creo e implemento la funcion accuracy():
+
+
+```
+# utils/accuracy.py
+
+import torch
+def accuracy(predictions, targets):
+    """
+        Calcula el accuracy entre outputs y labels
+    """
+
+    _, predicted = torch.max(predictions, 1)
+    return ((predicted == targets).sum().item()/targets.shape[0])*100
+
+# main.py
+
+# ...
+
+    with torch.no_grad():
+        for (X_val_batch, Y_val_batch) in val_loader:
+            X_val_batch = X_val_batch.float()
+            outputs = mlp(X_val_batch)
+            batches_val_loss = np.append(batches_val_loss, loss(outputs, Y_val_batch).item())
+            correct_val_samples = np.append(correct_val_samples, accuracy(outputs, Y_val_batch))
+
+
+# ...
+
+```
+
+5- Se implemento la clase TensorDataset en lugar de MyDataset (solucion nativa):
+
+```
+
+# loaders
+train_loader = torch.utils.data.DataLoader(
+        dataset=TensorDataset(X_train, Y_train),
+        batch_size=BATCH_SIZE,
+        shuffle=True)
+val_loader = torch.utils.data.DataLoader(
+        dataset=TensorDataset(X_val, Y_val),
+        batch_size=128,
+        shuffle=True)
+
+test_loader = torch.utils.data.DataLoader(
+        dataset=TensorDataset(X_test, Y_test),
+        batch_size=128,
+        shuffle=True)
+
+
+```

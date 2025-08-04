@@ -32,8 +32,8 @@ class MLP(torch.nn.Module):
         return out
     
     def _init_weigths(self):
-        torch.nn.init.kaiming_normal_(self.hl1.weight, nonlinearity='relu')
-        torch.nn.init.kaiming_normal_(self.hl2.weight, nonlinearity='relu')
-        torch.nn.init.kaiming_normal_(self.hl3.weight, nonlinearity='relu')
+        torch.nn.init.kaiming_normal_(self.hl1.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.hl2.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.hl3.weight, nonlinearity='leaky_relu')
         torch.nn.init.kaiming_normal_(self.out_layer.weight)
 

@@ -1,8 +1,12 @@
 import numpy as np
+from torch.utils.data import TensorDataset
+from pyarrow import Tensor, output_stream
+from sklearn.externals.array_api_compat.numpy import test
 from torchvision import datasets
 import torch
 from utils.Dataset import  MyDataset
 from utils.MLP import MLP
+from utils.accuracy import accuracy
 from utils.convert_dataset import convert_dataset
 from sklearn.model_selection import train_test_split
 from utils.plot_loss import plot_loss
@@ -26,7 +30,7 @@ test_dataset = datasets.FashionMNIST(
 X_train,Y_train = convert_dataset(train_dataset)
 X_test,Y_test = convert_dataset(test_dataset)
 
-X_val, X_test, Y_val, Y_test = train_test_split(X_test, Y_test, test_size=0.5, random_state=42, stratify=Y_test)
+X_train, X_val,Y_train, Y_val = train_test_split(X_train, Y_train, test_size=0.2, random_state=42, stratify=Y_train)
 
 X_train = X_train.to('cuda')
 Y_train = Y_train.to('cuda')
@@ -41,13 +45,20 @@ EPOCHS      = 40
 
 # loaders
 train_loader = torch.utils.data.DataLoader(
-        dataset=MyDataset(X_train, Y_train),
+        dataset=TensorDataset(X_train, Y_train),
         batch_size=BATCH_SIZE,
         shuffle=True)
 val_loader = torch.utils.data.DataLoader(
-        dataset=MyDataset(X_val, Y_val),
-        batch_size=64,
+        dataset=TensorDataset(X_val, Y_val),
+        batch_size=128,
         shuffle=True)
+
+test_loader = torch.utils.data.DataLoader(
+        dataset=TensorDataset(X_test, Y_test),
+        batch_size=128,
+        shuffle=True)
+
+
 
 mlp = MLP().to('cuda')
 loss = torch.nn.CrossEntropyLoss(reduction='mean')
@@ -84,8 +95,7 @@ for ep in range(EPOCHS+1):
             X_val_batch = X_val_batch.float()
             outputs = mlp(X_val_batch)
             batches_val_loss = np.append(batches_val_loss, loss(outputs, Y_val_batch).item())
-            _, predicted = torch.max(outputs, 1)
-            correct_val_samples = np.append(correct_val_samples, ((predicted == Y_val_batch).sum().item()/X_val_batch.shape[0])*100)
+            correct_val_samples = np.append(correct_val_samples, accuracy(outputs, Y_val_batch))
 
     print(f'Epoca actual : {ep}/{EPOCHS}')
     print(f"\tTrain batches : {len(batches_train_loss)}")
@@ -97,4 +107,12 @@ for ep in range(EPOCHS+1):
     val_losses = np.append(val_losses, batches_val_loss.mean())
     train_losses = np.append(train_losses, batches_train_loss.mean())
 
+
+# test accuracy
+test_acc = np.array([])
+for (X_test_batch, Y_test_batch) in test_loader:
+    outputs = mlp(X_test_batch)
+    test_acc = np.append(test_acc, accuracy(outputs, Y_test_batch))
+print(f"Test acc : {test_acc.mean()}")
 plot_loss(train_losses, val_losses)
+
