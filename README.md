@@ -669,6 +669,25 @@ Como vemos se empieza a generar overfitting muy rapidamente.
 
 ## L2 y Dropout
 
+Para implementar regularizacion L2 sobre el modelo, modificamos la siguiente linea.
+
+```
+optimizer = torch.optim.RMSprop(mlp.parameters(), lr=0.0001, momentum=0.9, weight_decay=1e-2)
+```
+
+Ante ello, el resultado despues de 40 epochas fue:
+
+```
+Epoca actual : 39/40
+        Train batches : 469
+        Train loss : 0.3816929791591315
+        Val loss : 0.42973518148064616
+        Diff: 12.586608857032559
+```
+
+
+![imagen no encontrada](./images/overfitting2.png)
+
 
 
 # Implementacion de tecnicas

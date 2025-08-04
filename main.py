@@ -51,13 +51,13 @@ val_loader = torch.utils.data.DataLoader(
 
 mlp = MLP().to('cuda')
 loss = torch.nn.CrossEntropyLoss(reduction='mean')
-optimizer = torch.optim.RMSprop(mlp.parameters(), lr=0.0001, momentum=0.9)
+optimizer = torch.optim.RMSprop(mlp.parameters(), lr=0.0001, momentum=0.9, weight_decay=1e-2)
 
 val_losses = np.array([])
 train_losses = np.array([])
 
 
-for ep in range(EPOCHS):
+for ep in range(EPOCHS+1):
 
     # entrenamiento
 
@@ -93,6 +93,4 @@ for ep in range(EPOCHS):
     val_losses = np.append(val_losses, batches_val_loss.mean())
     train_losses = np.append(train_losses, batches_train_loss.mean())
 
-print(val_losses)
-print(train_losses)
 plot_loss(train_losses, val_losses)
