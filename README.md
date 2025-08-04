@@ -366,6 +366,7 @@ from utils.Dataset import  MyDataset
 from utils.MLP import MLP
 from utils.convert_dataset import convert_dataset
 from sklearn.model_selection import train_test_split
+from utils.plot_loss import plot_loss
 
 
 print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
@@ -397,7 +398,7 @@ Y_test = Y_test.to('cuda')
 
 
 BATCH_SIZE  = 128
-EPOCHS      = 100
+EPOCHS      = 40
 
 # loaders
 train_loader = torch.utils.data.DataLoader(
@@ -413,11 +414,15 @@ mlp = MLP().to('cuda')
 loss = torch.nn.CrossEntropyLoss(reduction='mean')
 optimizer = torch.optim.RMSprop(mlp.parameters(), lr=0.0001, momentum=0.9)
 
+val_losses = np.array([])
+train_losses = np.array([])
+
+
 for ep in range(EPOCHS):
 
     # entrenamiento
 
-    train_loss = np.array([])
+    batches_train_loss = np.array([])
     mlp.train()
 
     for (X_train_batch, Y_train_batch) in train_loader:
@@ -427,136 +432,240 @@ for ep in range(EPOCHS):
         optimizer.zero_grad()
         batch_loss.backward()
         optimizer.step()
-        train_loss = np.append(train_loss, batch_loss.item())
+        batches_train_loss = np.append(batches_train_loss, batch_loss.item())
 
 
     # validacion
     mlp.eval()
-    val_loss = np.array([])
+    batches_val_loss = np.array([])
 
     with torch.no_grad():
         for (X_val_batch, Y_val_batch) in val_loader:
             X_val_batch = X_val_batch.float()
-            val_loss = np.append(val_loss, loss(mlp(X_val_batch), Y_val_batch).item())
+            batches_val_loss = np.append(batches_val_loss, loss(mlp(X_val_batch), Y_val_batch).item())
+
 
     print(f'Epoca actual : {ep}/{EPOCHS}')
-    print(f"\tTrain batches : {len(train_loss)}")
-    print(f'\tTrain loss : {train_loss.mean()}')
-    print(f'\tVal loss : {val_loss.mean()}')
-    print(f"\tDiff: {((val_loss.mean())*100)/(train_loss.mean())-100}")
+    print(f"\tTrain batches : {len(batches_train_loss)}")
+    print(f'\tTrain loss : {batches_train_loss.mean()}')
+    print(f'\tVal loss : {batches_val_loss.mean()}')
+    print(f"\tDiff: {((batches_val_loss.mean())*100)/(batches_train_loss.mean())-100}")
 
+    val_losses = np.append(val_losses, batches_val_loss.mean())
+    train_losses = np.append(train_losses, batches_train_loss.mean())
+
+print(val_losses)
+print(train_losses)
+plot_loss(train_losses, val_losses)
 ```
 
 ```
 Usando dispositivo NVIDIA GeForce RTX 5070
-Epoca actual : 0/100
+Epoca actual : 0/40
         Train batches : 469
-        Train loss : 0.5152776654976517
-        Val loss : 0.43120876923203466
-        Diff: -16.31526105142241
-Epoca actual : 1/100
+        Train loss : 0.5160285907386463
+        Val loss : 0.43835695944726466
+        Diff: -15.051807726428876
+Epoca actual : 1/40
         Train batches : 469
-        Train loss : 0.36429843907035997
-        Val loss : 0.39778382815420626
-        Diff: 9.191746516755998
-Epoca actual : 2/100
+        Train loss : 0.36329284389771377
+        Val loss : 0.38761087954044343
+        Diff: 6.693783280128812
+Epoca actual : 2/40
         Train batches : 469
-        Train loss : 0.32674070366664226
-        Val loss : 0.36351831294596193
-        Diff: 11.255900739211882
-Epoca actual : 3/100
+        Train loss : 0.32625732222981035
+        Val loss : 0.3953237425535917
+        Diff: 21.169308891443706
+Epoca actual : 3/40
         Train batches : 469
-        Train loss : 0.3007586251443891
-        Val loss : 0.39399664625525477
-        Diff: 31.000946711371512
-Epoca actual : 4/100
+        Train loss : 0.30254963510580407
+        Val loss : 0.3824466414749622
+        Diff: 26.407900423088435
+Epoca actual : 4/40
         Train batches : 469
-        Train loss : 0.28506701453916555
-        Val loss : 0.35374891720712187
-        Diff: 24.093247961005332
-Epoca actual : 5/100
+        Train loss : 0.28373749153827554
+        Val loss : 0.364764466509223
+        Diff: 28.5570209744443
+Epoca actual : 5/40
         Train batches : 469
-        Train loss : 0.2690039391456637
-        Val loss : 0.3730796679854393
-        Diff: 38.68929546917133
-Epoca actual : 6/100
+        Train loss : 0.2674202574595714
+        Val loss : 0.3483842906542122
+        Diff: 30.27595364830617
+Epoca actual : 6/40
         Train batches : 469
-        Train loss : 0.25469584785290617
-        Val loss : 0.3505544617772102
-        Diff: 37.6365043766497
-Epoca actual : 7/100
+        Train loss : 0.25402771034982924
+        Val loss : 0.35781815759837626
+        Diff: 40.85792337600259
+Epoca actual : 7/40
         Train batches : 469
-        Train loss : 0.24261873037512624
-        Val loss : 0.36180305294692516
-        Diff: 49.12412260484649
-Epoca actual : 8/100
+        Train loss : 0.24276356375230146
+        Val loss : 0.3430200483649969
+        Diff: 41.2979950792739
+Epoca actual : 8/40
         Train batches : 469
-        Train loss : 0.23088546283145958
-        Val loss : 0.3631820805370808
-        Diff: 57.29967408220685
-Epoca actual : 9/100
+        Train loss : 0.23058735733347407
+        Val loss : 0.34542085528373717
+        Diff: 49.800431072286244
+Epoca actual : 9/40
         Train batches : 469
-        Train loss : 0.22158619122845785
-        Val loss : 0.36564384363591673
-        Diff: 65.01201704348708
-Epoca actual : 10/100
+        Train loss : 0.2225358535422445
+        Val loss : 0.33681214936077597
+        Diff: 51.35185813859792
+Epoca actual : 10/40
         Train batches : 469
-        Train loss : 0.21169491207548805
-        Val loss : 0.3683063693344593
-        Diff: 73.97979277042111
-Epoca actual : 11/100
+        Train loss : 0.2106702119938092
+        Val loss : 0.34740526527166365
+        Diff: 64.90478743234596
+Epoca actual : 11/40
         Train batches : 469
-        Train loss : 0.20335617003791623
-        Val loss : 0.36481395959854124
-        Diff: 79.39655311688887
-Epoca actual : 12/100
+        Train loss : 0.20429983657242648
+        Val loss : 0.37785576581954955
+        Diff: 84.95157517445963
+Epoca actual : 12/40
         Train batches : 469
-        Train loss : 0.19360827054105587
-        Val loss : 0.3557626148685813
-        Diff: 83.75383131845061
-Epoca actual : 13/100
+        Train loss : 0.19475546995523388
+        Val loss : 0.36280880514532327
+        Diff: 86.28940446638947
+Epoca actual : 13/40
         Train batches : 469
-        Train loss : 0.18657288546247014
-        Val loss : 0.37561861947178843
-        Diff: 101.3254061761003
-Epoca actual : 14/100
+        Train loss : 0.187456229427603
+        Val loss : 0.36133833080530164
+        Diff: 92.75877462629387
+Epoca actual : 14/40
         Train batches : 469
-        Train loss : 0.18186162013425503
-        Val loss : 0.3687430736608803
-        Diff: 102.76024891269773
-Epoca actual : 15/100
+        Train loss : 0.17829608277026524
+        Val loss : 0.3520105991512537
+        Diff: 97.43036060125891
+Epoca actual : 15/40
         Train batches : 469
-        Train loss : 0.17548355907360627
-        Val loss : 0.3604395739734173
-        Diff: 105.39791640664839
-Epoca actual : 16/100
+        Train loss : 0.1724710003462936
+        Val loss : 0.3832379741594195
+        Diff: 122.20429718036092
+Epoca actual : 16/40
         Train batches : 469
-        Train loss : 0.1678968238582743
-        Val loss : 0.3808683052659035
-        Diff: 126.84664099864298
-Epoca actual : 17/100
+        Train loss : 0.1682966111628994
+        Val loss : 0.36959443241357803
+        Diff: 119.60895698359391
+Epoca actual : 17/40
         Train batches : 469
-        Train loss : 0.16186577946678407
-        Val loss : 0.3861498339101672
-        Diff: 138.56174861803183
-Epoca actual : 18/100
+        Train loss : 0.1615974226199996
+        Val loss : 0.3959186911582947
+        Diff: 145.00309766035528
+Epoca actual : 18/40
         Train batches : 469
-        Train loss : 0.15545029206666103
-        Val loss : 0.41276701241731645
-        Diff: 165.52990472369873
-Epoca actual : 19/100
+        Train loss : 0.15516087173748372
+        Val loss : 0.4670820966362953
+        Diff: 201.03085359468093
+Epoca actual : 19/40
         Train batches : 469
-        Train loss : 0.149886954408973
-        Val loss : 0.38224556656205094
-        Diff: 155.02257222404924
-Epoca actual : 20/100
+        Train loss : 0.15042928835031574
+        Val loss : 0.42649011574685575
+        Diff: 183.51534493313352
+Epoca actual : 20/40
         Train batches : 469
-        Train loss : 0.1446660777796179
-        Val loss : 0.4111731447279453
-        Diff: 184.2222247528686
+        Train loss : 0.14564127414656092
+        Val loss : 0.42868103124201296
+        Diff: 194.3403466867676
+Epoca actual : 21/40
+        Train batches : 469
+        Train loss : 0.140365113788195
+        Val loss : 0.40935792922973635
+        Diff: 191.63794206546225
+Epoca actual : 22/40
+        Train batches : 469
+        Train loss : 0.13641048774027875
+        Val loss : 0.4170353688299656
+        Diff: 205.72089854556327
+Epoca actual : 23/40
+        Train batches : 469
+        Train loss : 0.1339985163830745
+        Val loss : 0.46532224789261817
+        Diff: 247.25925364901542
+Epoca actual : 24/40
+        Train batches : 469
+        Train loss : 0.12621948876773625
+        Val loss : 0.4529493160312995
+        Diff: 258.85846191692127
+Epoca actual : 25/40
+        Train batches : 469
+        Train loss : 0.12471279528921347
+        Val loss : 0.517032890021801
+        Diff: 314.57886403939796
+Epoca actual : 26/40
+        Train batches : 469
+        Train loss : 0.12242884076099152
+        Val loss : 0.5325593311339617
+        Diff: 334.9949961330081
+Epoca actual : 27/40
+        Train batches : 469
+        Train loss : 0.11649491698709505
+        Val loss : 0.5003268163651228
+        Diff: 329.48381723860746
+Epoca actual : 28/40
+        Train batches : 469
+        Train loss : 0.11351050271479877
+        Val loss : 0.4886847872287035
+        Diff: 330.5194458142347
+Epoca actual : 29/40
+        Train batches : 469
+        Train loss : 0.10977587009718551
+        Val loss : 0.4620428788010031
+        Diff: 320.8965762621172
+Epoca actual : 30/40
+        Train batches : 469
+        Train loss : 0.10809904517236549
+        Val loss : 0.5582607932388782
+        Diff: 416.43452756564443
+Epoca actual : 31/40
+        Train batches : 469
+        Train loss : 0.10479304878346955
+        Val loss : 0.5076058279722929
+        Diff: 384.3888348177962
+Epoca actual : 32/40
+        Train batches : 469
+        Train loss : 0.10366247808818878
+        Val loss : 0.4988673336803913
+        Diff: 381.2419526147059
+Epoca actual : 33/40
+        Train batches : 469
+        Train loss : 0.09926912032051889
+        Val loss : 0.49196155928075314
+        Diff: 395.58367969043525
+Epoca actual : 34/40
+        Train batches : 469
+        Train loss : 0.09696057065527068
+        Val loss : 0.5769057869911194
+        Diff: 494.9900903968735
+Epoca actual : 35/40
+        Train batches : 469
+        Train loss : 0.09320845270255354
+        Val loss : 0.5507992915809155
+        Diff: 490.9327701626204
+Epoca actual : 36/40
+        Train batches : 469
+        Train loss : 0.09224395164802893
+        Val loss : 0.5336498458404094
+        Diff: 478.52014826579955
+Epoca actual : 37/40
+        Train batches : 469
+        Train loss : 0.09088020000074591
+        Val loss : 0.5637221157550811
+        Diff: 520.2914559502007
+Epoca actual : 38/40
+        Train batches : 469
+        Train loss : 0.08790211446249663
+        Val loss : 0.5988429114222527
+        Diff: 581.261099444597
+Epoca actual : 39/40
+        Train batches : 469
+        Train loss : 0.0853665280443773
+        Val loss : 0.5969214454293251
+        Diff: 599.2453120724541
 ```
 
 Como vemos se empieza a generar overfitting muy rapidamente.
+
+![imagen no encontrada](./images/overfitting1.png)
 
 ## L2 y Dropout
 

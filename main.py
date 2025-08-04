@@ -5,6 +5,7 @@ from utils.Dataset import  MyDataset
 from utils.MLP import MLP
 from utils.convert_dataset import convert_dataset
 from sklearn.model_selection import train_test_split
+from utils.plot_loss import plot_loss
 
 
 print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
@@ -36,7 +37,7 @@ Y_test = Y_test.to('cuda')
 
 
 BATCH_SIZE  = 128
-EPOCHS      = 100
+EPOCHS      = 40
 
 # loaders
 train_loader = torch.utils.data.DataLoader(
@@ -52,11 +53,15 @@ mlp = MLP().to('cuda')
 loss = torch.nn.CrossEntropyLoss(reduction='mean')
 optimizer = torch.optim.RMSprop(mlp.parameters(), lr=0.0001, momentum=0.9)
 
+val_losses = np.array([])
+train_losses = np.array([])
+
+
 for ep in range(EPOCHS):
 
     # entrenamiento
 
-    train_loss = np.array([])
+    batches_train_loss = np.array([])
     mlp.train()
 
     for (X_train_batch, Y_train_batch) in train_loader:
@@ -66,21 +71,28 @@ for ep in range(EPOCHS):
         optimizer.zero_grad()
         batch_loss.backward()
         optimizer.step()
-        train_loss = np.append(train_loss, batch_loss.item())
+        batches_train_loss = np.append(batches_train_loss, batch_loss.item())
 
 
     # validacion
     mlp.eval()
-    val_loss = np.array([])
+    batches_val_loss = np.array([])
 
     with torch.no_grad():
         for (X_val_batch, Y_val_batch) in val_loader:
             X_val_batch = X_val_batch.float()
-            val_loss = np.append(val_loss, loss(mlp(X_val_batch), Y_val_batch).item())
+            batches_val_loss = np.append(batches_val_loss, loss(mlp(X_val_batch), Y_val_batch).item())
+
 
     print(f'Epoca actual : {ep}/{EPOCHS}')
-    print(f"\tTrain batches : {len(train_loss)}")
-    print(f'\tTrain loss : {train_loss.mean()}')
-    print(f'\tVal loss : {val_loss.mean()}')
-    print(f"\tDiff: {((val_loss.mean())*100)/(train_loss.mean())-100}")
+    print(f"\tTrain batches : {len(batches_train_loss)}")
+    print(f'\tTrain loss : {batches_train_loss.mean()}')
+    print(f'\tVal loss : {batches_val_loss.mean()}')
+    print(f"\tDiff: {((batches_val_loss.mean())*100)/(batches_train_loss.mean())-100}")
 
+    val_losses = np.append(val_losses, batches_val_loss.mean())
+    train_losses = np.append(train_losses, batches_train_loss.mean())
+
+print(val_losses)
+print(train_losses)
+plot_loss(train_losses, val_losses)
