@@ -20,7 +20,7 @@ Y_val  = Y_val.to('cuda')
 X_test = X_test.to('cuda')
 Y_test = Y_test.to('cuda')
 
-BATCH_SIZE  = 128
+BATCH_SIZE  = 256
 
 # loaders
 train_loader = torch.utils.data.DataLoader(
@@ -29,12 +29,12 @@ train_loader = torch.utils.data.DataLoader(
         shuffle=True)
 val_loader = torch.utils.data.DataLoader(
         dataset=TensorDataset(X_val, Y_val),
-        batch_size=128,
+        batch_size=BATCH_SIZE,
         shuffle=True)
 
 test_loader = torch.utils.data.DataLoader(
         dataset=TensorDataset(X_test, Y_test),
-        batch_size=128,
+        batch_size=BATCH_SIZE,
         shuffle=True)
 
 

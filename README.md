@@ -784,7 +784,81 @@ Test acc : 87.61867088607595
 
 ![imagen no encontrada](./images/overfitting5.png.png)
 
+## *Mas mejoras
+
+1- Se modifico la arquitectura del MLP:
+
+```
+import torch
+class MLP(torch.nn.Module):
+    def __init__(self, input_shape=(28,28)):
+        super(MLP, self).__init__()
+
+        self.act = torch.nn.Mish()
+
+        self.flat_layer = torch.nn.Flatten()
+
+        self.hl1 = torch.nn.Linear(input_shape[0]*input_shape[1], 250)
+        self.hl2 = torch.nn.Linear(250, 150)
+        self.hl3 = torch.nn.Linear(150, 100)
+        self.out_layer = torch.nn.Linear(100, 10)
+
+        self.drop1 = torch.nn.Dropout(p=0.2)
+        self.drop2 = torch.nn.Dropout(p=0.2)
+        self.drop3 = torch.nn.Dropout(p=0.5)
+
+        self.bn1 = torch.nn.BatchNorm1d(self.hl1.out_features)
+        self.bn2 = torch.nn.BatchNorm1d(self.hl2.out_features)
+        self.bn3 = torch.nn.BatchNorm1d(self.hl3.out_features)
+
+        # inicializacion de pesos
+        self._init_weigths()
+
+    def forward(self, x):
+        out = self.flat_layer(x)
+        out = self.drop1(self.act(self.bn1(self.hl1(out))))
+        out = self.drop2(self.act(self.bn2(self.hl2(out))))
+        out = self.drop3(self.act(self.bn3(self.hl3(out))))
+        out = self.out_layer(out)
+        return out
+    
+    def _init_weigths(self):
+        torch.nn.init.kaiming_normal_(self.hl1.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.hl2.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.hl3.weight, nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_normal_(self.out_layer.weight)
+
+```
+
+2- Se aumento el tamanio del batch a 256.
+
+
+```
+Epoca actual : 80/80
+        Train batches : 188
+        Train loss : 0.27
+        Val acc: 89.53
+        Val loss : 0.29
+        Diff: 6.11
+Test acc : 88.515625
+```
+
+![imagen no encontrada](./images/overfitting6.png)
 
 ## LR Scheduling
+
+Se implemento `CosineAnnealingLR` para actualizar el LR con un ratio cosenoidal.
+
+```
+# train_model.py
+
+# ...
+
+    scheduler = CosineAnnealingLR(optimizer, T_max=(len(X_train)/BATCH_SIZE)//2)   
+
+#...
+```
+
+El LR llegara a su minimo 2 veces por cada epoca.
 
 ## Hypertunning

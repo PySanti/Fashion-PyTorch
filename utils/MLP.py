@@ -7,14 +7,14 @@ class MLP(torch.nn.Module):
 
         self.flat_layer = torch.nn.Flatten()
 
-        self.hl1 = torch.nn.Linear(input_shape[0]*input_shape[1], 120)
-        self.hl2 = torch.nn.Linear(120, 72)
-        self.hl3 = torch.nn.Linear(72, 48)
-        self.out_layer = torch.nn.Linear(48, 10)
+        self.hl1 = torch.nn.Linear(input_shape[0]*input_shape[1], 250)
+        self.hl2 = torch.nn.Linear(250, 150)
+        self.hl3 = torch.nn.Linear(150, 100)
+        self.out_layer = torch.nn.Linear(100, 10)
 
-        self.drop1 = torch.nn.Dropout(p=0.3)
-        self.drop2 = torch.nn.Dropout(p=0)
-        self.drop3 = torch.nn.Dropout(p=0)
+        self.drop1 = torch.nn.Dropout(p=0.2)
+        self.drop2 = torch.nn.Dropout(p=0.2)
+        self.drop3 = torch.nn.Dropout(p=0.5)
 
         self.bn1 = torch.nn.BatchNorm1d(self.hl1.out_features)
         self.bn2 = torch.nn.BatchNorm1d(self.hl2.out_features)

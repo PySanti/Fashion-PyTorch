@@ -3,11 +3,14 @@ from sklearn.externals.array_api_compat.numpy import test
 import torch
 from utils.accuracy import accuracy
 from utils.data_loading import *
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
-def train_model(mlp,  base_lr, l2_rate, EPOCHS=40):
+def train_model(mlp,  base_lr, l2_rate, EPOCHS=80):
     loss = torch.nn.CrossEntropyLoss(reduction='mean')
     optimizer = torch.optim.Adam(mlp.parameters(), lr=base_lr, weight_decay=l2_rate)
     val_losses = np.array([])
+
+    scheduler = CosineAnnealingLR(optimizer, T_max=(len(X_train)/BATCH_SIZE)//2)   
     train_losses = np.array([])
 
     for ep in range(EPOCHS+1):
@@ -25,6 +28,9 @@ def train_model(mlp,  base_lr, l2_rate, EPOCHS=40):
             batch_loss.backward()
             optimizer.step()
             batches_train_loss = np.append(batches_train_loss, batch_loss.item())
+
+            scheduler.step()
+
 
 
         # validacion

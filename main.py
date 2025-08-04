@@ -13,7 +13,7 @@ print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
 
 
 mlp = MLP().to('cuda')
-train_losses, val_losses = train_model(mlp, base_lr=1e-4, l2_rate=1e-2)
+train_losses, val_losses = train_model(mlp, base_lr=1e-4, l2_rate=1e-5)
 
 # test accuracy
 test_acc = np.array([])
