@@ -591,7 +591,7 @@ Epoca actual : 40/40
 
 ![imagen no encontrada](./images/overfitting4.png)
 
-## Wigths Initialization
+## Weigths Initialization
 
 Implementamos He Initialization:
 
