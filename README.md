@@ -864,3 +864,16 @@ Test acc : 88.515625
 ![imagen no encontrada](./images/overfitting6.png)
 
 ## Hypertunning
+
+Los hiperparametros a tunear seran:
+
+* Cantidad de capas
+* Cantidad de neuronas por capa
+* Learning Rate
+* Batch Size
+* l2_rate
+* Dropout_rate
+* Funcion de optimizacion
+* Funcion de activacion
+
+

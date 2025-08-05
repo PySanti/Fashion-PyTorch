@@ -4,8 +4,11 @@ import torch
 from utils.accuracy import accuracy
 from utils.data_loading import *
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from utils.MLP import MLP
 
-def train_model(mlp,  base_lr, l2_rate, EPOCHS=80):
+def train_model(base_lr, l2_rate, EPOCHS=80):
+
+    mlp = MLP().to('cuda')
     loss = torch.nn.CrossEntropyLoss(reduction='mean')
     optimizer = torch.optim.Adam(mlp.parameters(), lr=base_lr, weight_decay=l2_rate)
     val_losses = np.array([])
@@ -55,7 +58,7 @@ def train_model(mlp,  base_lr, l2_rate, EPOCHS=80):
         val_losses = np.append(val_losses, batches_val_loss.mean())
         train_losses = np.append(train_losses, batches_train_loss.mean())
 
-    return train_losses, val_losses
+    return mlp, train_losses, val_losses
 
 
 

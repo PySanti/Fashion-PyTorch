@@ -2,7 +2,6 @@ import numpy as np
 from torch.utils.data import TensorDataset
 from sklearn.externals.array_api_compat.numpy import test
 import torch
-from utils.MLP import MLP
 from utils.accuracy import accuracy
 from utils.plot_loss import plot_loss
 from utils.data_loading import *
@@ -12,8 +11,7 @@ from utils.train_model import train_model
 print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
 
 
-mlp = MLP().to('cuda')
-train_losses, val_losses = train_model(mlp, base_lr=1e-4, l2_rate=1e-5)
+mlp, train_losses, val_losses = train_model(base_lr=1e-4, l2_rate=1e-5)
 
 # test accuracy
 test_acc = np.array([])
