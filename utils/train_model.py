@@ -1,22 +1,31 @@
 import numpy as np
-from sklearn.externals.array_api_compat.numpy import test
 import torch
 from utils.accuracy import accuracy
-from utils.data_loading import *
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils.MLP import MLP
+from ray import tune
 
-def train_model(base_lr, l2_rate, EPOCHS=80):
+from utils.generate_dataloaders import generate_dataloaders
 
-    mlp = MLP().to('cuda')
+
+def train_model(config):
+
+    mlp = MLP(
+            hidden_sizes=[config["l1_size"], config["l2_size"], config["l3_size"]],
+            dropout_rates=[config["l1_drop"], config["l2_drop"], config["l3_drop"]]
+            ).to('cuda')
+
     loss = torch.nn.CrossEntropyLoss(reduction='mean')
-    optimizer = torch.optim.Adam(mlp.parameters(), lr=base_lr, weight_decay=l2_rate)
-    val_losses = np.array([])
+    optimizer = torch.optim.Adam(
+            mlp.parameters(), 
+            lr=config['base_lr'], 
+            weight_decay=config['l2_rate'])
+    scheduler = CosineAnnealingLR(optimizer, T_max=config['t_max'])   
 
-    scheduler = CosineAnnealingLR(optimizer, T_max=(len(X_train)/BATCH_SIZE)//2)   
-    train_losses = np.array([])
+    (train_loader, val_loader, _) = generate_dataloaders(config["batch_size"])
 
-    for ep in range(EPOCHS+1):
+
+    for ep in range(config['max_epochs']+1):
 
         # entrenamiento
 
@@ -32,7 +41,7 @@ def train_model(base_lr, l2_rate, EPOCHS=80):
             optimizer.step()
             batches_train_loss = np.append(batches_train_loss, batch_loss.item())
 
-            scheduler.step()
+        scheduler.step()
 
 
 
@@ -48,17 +57,15 @@ def train_model(base_lr, l2_rate, EPOCHS=80):
                 batches_val_loss = np.append(batches_val_loss, loss(outputs, Y_val_batch).item())
                 correct_val_samples = np.append(correct_val_samples, accuracy(outputs, Y_val_batch))
 
-        print(f'Epoca actual : {ep}/{EPOCHS}')
-        print(f"\tTrain batches : {len(batches_train_loss)}")
-        print(f'\tTrain loss : {batches_train_loss.mean():.2f}')
-        print(f"\tVal acc: {correct_val_samples.mean():.2f}")
-        print(f'\tVal loss : {batches_val_loss.mean():.2f}')
-        print(f"\tDiff: {((batches_val_loss.mean())*100)/(batches_train_loss.mean())-100:.2f}")
 
-        val_losses = np.append(val_losses, batches_val_loss.mean())
-        train_losses = np.append(train_losses, batches_train_loss.mean())
 
-    return mlp, train_losses, val_losses
+        tune.report({"accuracy": correct_val_samples.mean()})
 
+
+#        print(f'Epoca actual : {ep}/{config["max_epochs"]}')
+#        print(f"\tTrain batches : {len(batches_train_loss)}")
+#        print(f'\tTrain loss : {batches_train_loss.mean():.2f}')
+#        print(f"\tVal acc: {correct_val_samples.mean():.2f}")
+#        print(f'\tVal loss : {batches_val_loss.mean():.2f}')
 
 

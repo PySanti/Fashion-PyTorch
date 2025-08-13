@@ -1,0 +1,13 @@
+{
+  "base_lr": 0.001,
+  "batch_size": 512,
+  "l1_drop": 0.3,
+  "l1_size": 256,
+  "l2_drop": 0.2,
+  "l2_rate": 0.001,
+  "l2_size": 256,
+  "l3_drop": 0.1,
+  "l3_size": 128,
+  "max_epochs": 80,
+  "t_max": 10
+}

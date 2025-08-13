@@ -14,7 +14,8 @@ Luego, buscaremos implementar conceptos relacionados con la implementacion avanz
 
 Primeramente, utilizando el siguiente codigo cargamos el conjunto de datos y revisamos el shape 
 
-```
+```python
+
 import torch
 from torchvision import datasets, transforms
 import numpy as np
@@ -53,7 +54,7 @@ La variable *train_dataset* y *test_dataset* contienen 60.000 y 10.000 tuplas re
 
 Luego, creamos la siguiente funcion para convertir los datasets:
 
-```
+```python
 import numpy as np
 import torch
 def convert_dataset(set_):
@@ -68,7 +69,7 @@ def convert_dataset(set_):
 
 Y usando el siguiente codigo:
 
-```
+```python
 from torchvision import datasets
 from utils.convert_dataset import convert_dataset
 
@@ -200,7 +201,7 @@ Las etiquetas son las siguientes:
 
 Utilizamos *normalizacion* y *estandarizacion* respectivamente para escalar los datos:
 
-```
+```python
 import torch
 import numpy as np
 
@@ -220,7 +221,7 @@ De este modo logramos que todas las features (pixeles) esten en la misma escala 
 
 Utilizamos *scikit-learn* para dividir el conjunto de test en validacion y test:
 
-```
+```python
 # main.py
 
 from torchvision import datasets
@@ -264,7 +265,7 @@ Ademas, **movimos los tensores a la GPU**.
 
 El codigo utilizado para la definicion de la arquitectura fue la siguiente:
 
-```
+```python
 import torch
 class MLP(torch.nn.Module):
     def __init__(self, input_shape=(28,28)):
@@ -291,7 +292,7 @@ class MLP(torch.nn.Module):
 
 El codigo en **main.py** fue el siguiente:
 
-```
+```python
 from numpy import outer
 from torchvision import datasets
 import torch
@@ -358,7 +359,7 @@ for ep in range(epochs):
 
 Utilizando el siguiente codigo (despues de algunas pruebas previas), obtenemos los posteriores resultados:
 
-```
+```python
 import numpy as np
 from torchvision import datasets
 import torch
@@ -477,7 +478,7 @@ Como vemos se empieza a generar overfitting muy rapidamente.
 
 Para implementar regularizacion L2 sobre el modelo, modificamos la siguiente linea.
 
-```
+```python
 optimizer = torch.optim.RMSprop(mlp.parameters(), lr=0.0001, momentum=0.9, weight_decay=1e-2)
 ```
 
@@ -496,7 +497,7 @@ Epoca actual : 39/40
 
 Luego, implementamos `Mish`, `Dropout` y `Adam`:
 
-```
+```python
 # main.py
 
 optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001, weight_decay=1e-2)
@@ -543,7 +544,7 @@ Epoca actual : 40/40
 
 Se implemento `Batch Normalization` a traves de las siguientes modificaciones en el MLP:
 
-```
+```python
 
 # MLP.py
 
@@ -596,7 +597,7 @@ Epoca actual : 40/40
 Implementamos He Initialization:
 
 
-```
+```python
 # MPL.py
 
     def __init__(self, ...):
@@ -623,7 +624,7 @@ Epoca actual : 40/40
 
 Cabe descatar que implementamos la verificacion del accuracy en el conjunto de validacion y una pequenia modificacion para evitar sesgos en el calculo de estadisticas para el conjunto de validacion:
 
-```
+```python
 # main.py 
 
 ...
@@ -679,13 +680,13 @@ Se implementaron algunas modificaciones generales para generar un poco los resul
 
 Previamente se estaba obteniendo el conjunto de de validacion a partir del de test, ahora lo calculamos a partir del de train:
 
-```
+```python
 X_train, X_val,Y_train, Y_val = train_test_split(X_train, Y_train, test_size=0.2, random_state=42, stratify=Y_train)
 ```
 
 2- Modificacion del parametro nonlinearity en He Initialization:
 
-```
+```python
     def _init_weigths(self):
         torch.nn.init.kaiming_normal_(self.hl1.weight, nonlinearity='leaky_relu')
         torch.nn.init.kaiming_normal_(self.hl2.weight, nonlinearity='leaky_relu')
@@ -696,7 +697,7 @@ X_train, X_val,Y_train, Y_val = train_test_split(X_train, Y_train, test_size=0.2
 
 3- Implementacion de calculo de accuracy para Test:
 
-```
+```python
 # ...
 
 test_loader = torch.utils.data.DataLoader(
@@ -719,7 +720,7 @@ plot_loss(train_losses, val_losses)
 4- Se creo e implemento la funcion accuracy():
 
 
-```
+```python
 # utils/accuracy.py
 
 import torch
@@ -749,7 +750,7 @@ def accuracy(predictions, targets):
 
 5- Se implemento la clase TensorDataset en lugar de MyDataset (solucion nativa):
 
-```
+```python
 
 # loaders
 train_loader = torch.utils.data.DataLoader(
@@ -788,7 +789,7 @@ Test acc : 87.61867088607595
 
 1- Se modifico la arquitectura del MLP:
 
-```
+```python
 import torch
 class MLP(torch.nn.Module):
     def __init__(self, input_shape=(28,28)):
@@ -838,7 +839,7 @@ class MLP(torch.nn.Module):
 
 Se implemento `CosineAnnealingLR` para actualizar el LR con un ratio cosenoidal.
 
-```
+```python
 # train_model.py
 
 # ...
@@ -867,13 +868,170 @@ Test acc : 88.515625
 
 Los hiperparametros a tunear seran:
 
-* Cantidad de capas
 * Cantidad de neuronas por capa
 * Learning Rate
 * Batch Size
 * l2_rate
 * Dropout_rate
-* Funcion de optimizacion
-* Funcion de activacion
+
+La libreria que se implemento para hacer Hypertunning fue `ray tuner`.
+
+Su forma de implementacion es la siguiente:
+
+1- Crear una funcion `train_model` que reciba una configuracion de hiperparametros, entrene la red y reporte los resultados.
+
+2- Crear un scheduler, basicamente el algoritmo de busqueda de hiperparametros.
+
+3- Llamar al metodo `tuner.run()`
+
+Estas fueron las modificaciones:
 
 
+```python
+# main.py
+
+
+config = {
+    "base_lr": tune.choice([1e-4, 1e-3, 1e-2, 1e-1]),
+    "batch_size": tune.choice([128, 256, 512]),
+
+    "l1_size": tune.choice([64, 128, 256, 512]),
+    "l1_drop": tune.choice([0.1, 0.2, 0.3, 0.4, 0.5]),
+
+    "l2_size": tune.choice([64, 128, 256, 512]),
+    "l2_drop": tune.choice([0.1, 0.2, 0.3, 0.4, 0.5]),
+
+    "l3_size": tune.choice([64, 128, 256, 512]),
+    "l3_drop": tune.choice([0.1, 0.2, 0.3, 0.4, 0.5]),
+
+    "l2_rate": tune.choice([1e-3, 1e-2, 1e-1, 0.5, 0.3, 0.2]),
+    'max_epochs': 80
+}
+
+
+
+
+# 4. Scheduler para terminación temprana de pruebas poco prometedoras
+scheduler = ASHAScheduler(
+    metric="accuracy",
+    mode="max",
+    max_t=70,            # Número máximo de épocas/iteraciones por trial
+    grace_period=15,      # Mínimo de épocas antes de considerar detener un trial
+    reduction_factor=2   # Factor de reducción de recursos entre etapas
+)
+
+
+analysis = tune.run(
+    train_model,
+    config=config,
+    scheduler=scheduler,
+    verbose=10,
+
+    # Número de combinaciones a probar
+    num_samples=200,  
+
+    # recursos
+    resources_per_trial={"cpu": 5, "gpu": 1},
+    max_concurrent_trials=3,
+
+    # almacenamiento
+    name="my_tune_exp",
+    trial_dirname_creator=lambda trial:f"trial_{trial.trial_id}",
+    storage_path=os.path.abspath("./tune_results")
+
+)
+
+# 6. Mostrar los mejores resultados
+print("Mejores hiperparámetros encontrados: ", analysis.best_config)
+print("Mejor precision obtenida: ", analysis.best_result["accuracy"])
+
+
+```
+
+```python
+# train_model.py
+
+
+
+...
+
+# acceso al config
+def train_model(config):
+
+    mlp = MLP(
+            hidden_sizes=[config["l1_size"], config["l2_size"], config["l3_size"]],
+            dropout_rates=[config["l1_drop"], config["l2_drop"], config["l3_drop"]]
+            ).to('cuda')
+
+    loss = torch.nn.CrossEntropyLoss(reduction='mean')
+    optimizer = torch.optim.Adam(
+            mlp.parameters(), 
+            lr=config['base_lr'], 
+            weight_decay=config['l2_rate'])
+    scheduler = CosineAnnealingLR(optimizer, T_max=500)   
+
+    (train_loader, val_loader, _) = generate_dataloaders(config["batch_size"])
+
+...
+
+        # reporte de precision luego de cada epoca
+        tune.report({"accuracy": correct_val_samples.mean()})
+...
+
+```
+
+Ademas, se creo una funcion para generar dataloaders e implementar `batch_size` como otro hiperparametro:
+
+```python
+# utils/generate_dataloaders.py
+from torch.utils.data import TensorDataset
+import torch
+import torchvision
+from utils.convert_dataset import convert_dataset
+from sklearn.model_selection import train_test_split
+
+
+train_dataset = torchvision.datasets.FashionMNIST(root='./data',train=True,download=True,)
+test_dataset = torchvision.datasets.FashionMNIST(root='./data',train=False,download=True,)
+
+X_train,Y_train = convert_dataset(train_dataset)
+X_test,Y_test = convert_dataset(test_dataset)
+
+X_train, X_val,Y_train, Y_val = train_test_split(X_train, Y_train, test_size=0.2, random_state=42, stratify=Y_train)
+
+X_train = X_train.to('cuda')
+Y_train = Y_train.to('cuda')
+X_val  = X_val.to('cuda')
+Y_val  = Y_val.to('cuda')
+X_test = X_test.to('cuda')
+Y_test = Y_test.to('cuda')
+
+
+def generate_dataloaders(batch_size):
+    train_loader = torch.utils.data.DataLoader(
+            dataset=TensorDataset(X_train, Y_train),
+            batch_size=batch_size,
+            shuffle=True)
+    val_loader = torch.utils.data.DataLoader(
+            dataset=TensorDataset(X_val, Y_val),
+            batch_size=batch_size,
+            shuffle=True)
+
+    test_loader = torch.utils.data.DataLoader(
+            dataset=TensorDataset(X_test, Y_test),
+            batch_size=batch_size,
+            shuffle=True)
+    return (train_loader, val_loader, test_loader)
+
+```
+
+Luego de la primera sesion de tuninng, se obtuvieron los siguientes resultados:
+
+
+```
+Mejor configuracion
+{'base_lr': 0.001, 'batch_size': 512, 'l1_size': 256, 'l1_drop': 0.3, 'l2_size': 512, 'l2_drop': 0.1, 'l3_size': 512, 'l3_drop': 0.3, 'l2_rate': 0.0001, 't_max': 10, 'max_epochs': 80}
+
+Mejor accuracy
+91.05050223214285
+```
