@@ -3,26 +3,29 @@ import torch
 from utils.train_model import train_model
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
+from utils.load_base_datasets import load_base_datasets
 
 
 print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
 
+train_dataset, val_dataset, test_dataset = load_base_datasets()
+
 
 search_space = {
-    "base_lr": tune.choice([1e-4, 1e-3, 1e-2, 1e-1]),
-    "batch_size": tune.choice([256, 512]),
+    "base_lr": tune.loguniform(5e-4,5e-2),
+    "batch_size": tune.choice([512, 1024]),
 
-    "l1_size": tune.choice([64, 128, 256, 512]),
-    "l1_drop": tune.choice([0.1, 0.2, 0.3, 0.4]),
+    "l1_size": tune.randint(250, 350),
+    "l1_drop": tune.loguniform(0.25, 0.35),
 
-    "l2_size": tune.choice([64, 128, 256, 512]),
-    "l2_drop": tune.choice([0.1, 0.2, 0.3, 0.4]),
+    "l2_size": tune.randint(450, 650),
+    "l2_drop": tune.loguniform(0.05, 0.15),
 
-    "l3_size": tune.choice([64, 128, 256, 512]),
-    "l3_drop": tune.choice([0.1, 0.2, 0.3, 0.4]),
+    "l3_size": tune.randint(450, 650),
+    "l3_drop": tune.loguniform(0.25, 0.35),
 
-    "l2_rate": tune.choice([1e-3, 1e-2, 1e-1, 1e-4]),
-    "t_max" : tune.choice([3,5,7,10]),
+    "l2_rate": tune.loguniform(5e-3, 5e-5),
+    "t_max" : tune.randint(8,15),
     'max_epochs': 80
 }
 
@@ -36,9 +39,8 @@ scheduler = ASHAScheduler(
     reduction_factor=2   # Factor de reducción de recursos entre etapas
 )
 
-
 analysis = tune.run(
-    train_model,
+    tune.with_parameters(train_model, train_dataset=train_dataset, val_dataset=val_dataset),
     config=search_space,
     scheduler=scheduler,
     verbose=10,
@@ -53,8 +55,7 @@ analysis = tune.run(
     # almacenamiento
     name="my_tune_exp",
     trial_dirname_creator=lambda trial:f"trial_{trial.trial_id}",
-    storage_path=os.path.abspath("./tune_results"),
-    resume=True
+    storage_path=os.path.abspath("./tune_results")
 )
 best_config = analysis.get_best_config(metric='accuracy', mode='max')
 best_accuracy = analysis.get_best_trial(metric='accuracy', mode='max').last_result['accuracy']

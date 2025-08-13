@@ -1035,3 +1035,234 @@ Mejor configuracion
 Mejor accuracy
 91.05050223214285
 ```
+
+## Segunda Sesion de Hypertunning
+
+Realizamos varios cambios para mejorar la eficiencia y las buenas practicas generales y mejoramos el espacio de busqueda teniendo en cuenta los resultados anteriores.
+
+
+1- Nuevo espacio de busqueda:
+
+```python
+
+search_space = {
+    "base_lr": tune.loguniform(5e-4,5e-2),
+    "batch_size": tune.choice([512, 1024]),
+
+    "l1_size": tune.randint(250, 350),
+    "l1_drop": tune.loguniform(0.25, 0.35),
+
+    "l2_size": tune.randint(450, 650),
+    "l2_drop": tune.loguniform(0.05, 0.15),
+
+    "l3_size": tune.randint(450, 650),
+    "l3_drop": tune.loguniform(0.25, 0.35),
+
+    "l2_rate": tune.loguniform(5e-3, 5e-5),
+    "t_max" : tune.randint(8,15),
+    'max_epochs': 80
+}
+```
+
+2- Carga de datasets: se cambio la forma en la cual se consumia la funcion `generate_dataloaders`, ahora se usa la funcion `tune.with_parameters` para cargar los datasets base en el contexto de los actores (instancias de train_model) y evitar cargarlos cada vez que se importa el archivo generate_dataloaders. La version actual es la siguiente
+
+
+```python
+
+
+# utils/generate_dataloaders.py
+
+from torch.utils.data import TensorDataset
+import torch
+
+def generate_dataloaders(batch_size, train_dataset, val_dataset, test_dataset=None):
+    test_loader = None
+    X_train,Y_train = train_dataset
+    X_val, Y_val = val_dataset
+    train_loader = torch.utils.data.DataLoader(
+            dataset=TensorDataset(X_train, Y_train),
+            batch_size=batch_size,
+            shuffle=True)
+    val_loader = torch.utils.data.DataLoader(
+            dataset=TensorDataset(X_val, Y_val),
+            batch_size=batch_size,
+            shuffle=True)
+    if test_dataset:
+        X_test, Y_test = test_dataset
+        test_loader = torch.utils.data.DataLoader(
+                dataset=TensorDataset(X_test, Y_test),
+                batch_size=batch_size,
+                shuffle=True)
+    return (train_loader, val_loader, test_loader)
+
+
+# utils/train_model
+
+import numpy as np
+import torch
+from utils.accuracy import accuracy
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from utils.MLP import MLP
+from ray import tune
+
+from utils.generate_dataloaders import generate_dataloaders
+
+def train_model(config, train_dataset, val_dataset):
+    mlp = MLP(
+            hidden_sizes=[config["l1_size"], config["l2_size"], config["l3_size"]],
+            dropout_rates=[config["l1_drop"], config["l2_drop"], config["l3_drop"]]
+            ).to('cuda')
+    loss = torch.nn.CrossEntropyLoss(reduction='mean')
+    optimizer = torch.optim.Adam(mlp.parameters(),lr=config['base_lr'],weight_decay=config['l2_rate'])
+    scheduler = CosineAnnealingLR(optimizer, T_max=config['t_max'])   
+    (train_loader, val_loader, _) = generate_dataloaders(config["batch_size"], train_dataset, val_dataset)
+    for ep in range(config['max_epochs']+1):
+        # entrenamiento
+        batches_train_loss = []
+        mlp.train()
+        for (X_train_batch, Y_train_batch) in train_loader:
+            X_train_batch = X_train_batch.float().to('cuda')
+            Y_train_batch = Y_train_batch.to('cuda')
+            outputs = mlp(X_train_batch)
+            batch_loss = loss(outputs, Y_train_batch)
+            optimizer.zero_grad()
+            batch_loss.backward()
+            optimizer.step()
+            batches_train_loss.append(batch_loss.item())
+        scheduler.step()
+        # validacion
+        mlp.eval()
+        batches_val_loss = []
+        correct_val_samples = []
+
+        with torch.no_grad():
+            for (X_val_batch, Y_val_batch) in val_loader:
+                X_val_batch = X_val_batch.float().to('cuda')
+                Y_val_batch = Y_val_batch.to('cuda')
+                outputs = mlp(X_val_batch)
+                batches_val_loss.append(loss(outputs, Y_val_batch).item())
+                correct_val_samples.append(accuracy(outputs, Y_val_batch))
+        tune.report({"accuracy": np.mean(correct_val_samples)})
+
+
+# utils/main.py
+
+import os
+import torch
+from utils.train_model import train_model
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
+from utils.load_base_datasets import load_base_datasets
+
+
+print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
+
+train_dataset, val_dataset, test_dataset = load_base_datasets()
+
+
+search_space = {
+    "base_lr": tune.loguniform(5e-4,5e-2),
+    "batch_size": tune.choice([512, 1024]),
+
+    "l1_size": tune.randint(250, 350),
+    "l1_drop": tune.loguniform(0.25, 0.35),
+
+    "l2_size": tune.randint(450, 650),
+    "l2_drop": tune.loguniform(0.05, 0.15),
+
+    "l3_size": tune.randint(450, 650),
+    "l3_drop": tune.loguniform(0.25, 0.35),
+
+    "l2_rate": tune.loguniform(5e-3, 5e-5),
+    "t_max" : tune.randint(8,15),
+    'max_epochs': 80
+}
+
+
+
+scheduler = ASHAScheduler(
+    metric="accuracy",
+    mode="max",
+    max_t=50,            # Número máximo de épocas/iteraciones por trial
+    grace_period=10,      # Mínimo de épocas antes de considerar detener un trial
+    reduction_factor=2   # Factor de reducción de recursos entre etapas
+)
+
+analysis = tune.run(
+    tune.with_parameters(train_model, train_dataset=train_dataset, val_dataset=val_dataset),
+    config=search_space,
+    scheduler=scheduler,
+    verbose=10,
+
+    # Número de combinaciones a probar
+    num_samples=75,  
+
+    # recursos
+    resources_per_trial={"cpu": 5, "gpu": 1},
+    max_concurrent_trials=4,
+
+    # almacenamiento
+    name="my_tune_exp",
+    trial_dirname_creator=lambda trial:f"trial_{trial.trial_id}",
+    storage_path=os.path.abspath("./tune_results")
+)
+best_config = analysis.get_best_config(metric='accuracy', mode='max')
+best_accuracy = analysis.get_best_trial(metric='accuracy', mode='max').last_result['accuracy']
+print("Mejor configuracion")
+print(best_config)
+print("Mejor accuracy")
+print(best_accuracy)
+
+# test accuracy
+#test_acc = np.array([])
+#for (X_test_batch, Y_test_batch) in test_loader:
+#    outputs = mlp(X_test_batch)
+#    test_acc = np.append(test_acc, accuracy(outputs, Y_test_batch))
+#print(f"Test acc : {test_acc.mean()}")
+
+# utils/load_base_datasets.py
+
+import torchvision
+from utils.convert_dataset import convert_dataset
+from sklearn.model_selection import train_test_split
+
+
+def load_base_datasets():
+    train_dataset = torchvision.datasets.FashionMNIST(root='./data',train=True,download=True,)
+    test_dataset = torchvision.datasets.FashionMNIST(root='./data',train=False,download=True,)
+
+    X_train,Y_train = convert_dataset(train_dataset)
+    X_test,Y_test = convert_dataset(test_dataset)
+
+    X_train, X_val,Y_train, Y_val = train_test_split(X_train, Y_train, test_size=0.2, random_state=42, stratify=Y_train)
+
+    return (X_train, Y_train), (X_val, Y_val), (X_test, Y_test)
+
+```
+
+3- Movimiento de batches a GPU: previamente moviamos todos los datasets a la GPU apenas se cargaban, lo mas eficiente es solo cargar los batches a medida que se procesan:
+
+
+```python
+
+# utils/train_model.py
+
+...
+
+        for (X_train_batch, Y_train_batch) in train_loader:
+            X_train_batch = X_train_batch.float().to('cuda')
+            Y_train_batch = Y_train_batch.to('cuda')
+
+...
+```
+
+Luego, los resultados fueron los siguientes
+
+```
+Mejor configuracion
+{'base_lr': 0.0010715919273875342, 'batch_size': 1024, 'l1_size': 342, 'l1_drop': 0.320648833668769, 'l2_size': 580, 'l2_drop': 0.06977326476490549, 'l3_size': 491, 'l3_drop': 0.2546751849701374, 'l2_rate': 9.28191006797375e-05, 't_max': 10, 'max_epochs': 80}
+Mejor accuracy
+91.09983582427536
+```
+
+## Carga final del modelo
