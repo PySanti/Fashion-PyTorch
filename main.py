@@ -1,4 +1,9 @@
 import os
+from time import sleep
+from random import randint
+from utils.show_image import show_image
+from scipy.sparse import random
+from sklearn.externals.array_api_compat.numpy import test
 from utils.MLP import MLP
 import torch
 from utils.train_model import train_model
@@ -14,6 +19,18 @@ from utils.accuracy import accuracy
 print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
 
 train_dataset, val_dataset, test_dataset = load_base_datasets()
+target_map = {
+        0:	"T-shirt/top",
+        1:	"Trouser",
+        2:	"Pullover",
+        3:	"Dress",
+        4:	"Coat",
+        5:	"Sandal",
+        6:	"Shirt",
+        7:	"Sneaker",
+        8:	"Bag",
+        9:	"Ankle boot"
+    }
 
 try:
     print("Intentando cargar resultados previos")
@@ -30,10 +47,23 @@ try:
         Y_test_batch = Y_test_batch.to("cuda")
         outputs = model(X_test_batch)
         test_acc.append(accuracy(outputs, Y_test_batch))
-
     print(f"Precision en test del mejor modelo : {np.mean(test_acc)}")
 
-except:
+
+    model.eval()
+    with torch.no_grad():
+        while True:
+            random_element = randint(0, len(test_dataset[0]))
+            # el unsqueeze se utiliza para agregar una dimension en la posicion 0 al tensor
+            # teniendo en cuenta que el modelo espera un batch y no un tensor unico
+            random_image = test_dataset[0][random_element].to("cuda")
+            prediction = torch.max(model(random_image.unsqueeze(0)),1)[1][0]
+            target = test_dataset[1][random_element]
+            print(f"Modelo : {target_map[int(prediction)]} / Target : {target_map[int(target)]}")
+            show_image(random_image.to("cpu"))
+
+
+except Exception as e:
     search_space = {
         "base_lr": tune.loguniform(5e-4,5e-2),
         "batch_size": tune.choice([512, 1024]),
