@@ -1483,3 +1483,15 @@ def train_model(config, train_dataset, val_dataset):
 ```
 
 La logica de cargar el mejor modelo viene dado por entender que un checkpoint y un trial son dos cosas diferentes: el objeto `best_trial` almacena las metricas y la configuracion mientras que el checkpoint todo el modelo.
+
+Los resultados finales al correr el `main.py` fueron:
+
+
+```
+Usando dispositivo NVIDIA GeForce RTX 5070
+Intentando cargar resultados previos
+Configuracion del mejor modelo
+{'base_lr': 0.0025588859252734636, 'batch_size': 1024, 'l1_size': 343, 'l1_drop': 0.25931500148630343, 'l2_size': 484, 'l2_drop': 0.053793240284091534, 'l3_size': 489, 'l3_drop': 0.3367937619006571, 'l2_rate': 7.803563313503323e-05, 't_max': 9, 'max_epochs': 80}
+Precision en validacion del mejor modelo : 91.4338485054348
+Precision en test del mejor modelo : 89.18626434948979
+```
