@@ -1,9 +1,18 @@
+import os
 import numpy as np
 import torch
 from utils.accuracy import accuracy
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils.MLP import MLP
 from ray import tune
+import os
+import tempfile
+from pathlib import Path
+import torch
+from ray import tune
+from ray import train
+from ray.tune import Checkpoint
+import ray.cloudpickle as pickle
 
 from utils.generate_dataloaders import generate_dataloaders
 
@@ -42,5 +51,11 @@ def train_model(config, train_dataset, val_dataset):
                 outputs = mlp(X_val_batch)
                 batches_val_loss.append(loss(outputs, Y_val_batch).item())
                 correct_val_samples.append(accuracy(outputs, Y_val_batch))
-        tune.report({"accuracy": np.mean(correct_val_samples)})
-
+    # se almacena un checkpoint (estado del modelo) al final de cada trial
+    with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
+        torch.save(
+            mlp.state_dict(),
+            os.path.join(temp_checkpoint_dir, "model.pt"),
+        )
+        checkpoint = Checkpoint.from_directory(temp_checkpoint_dir)
+        tune.report({"accuracy": np.mean(correct_val_samples)}, checkpoint=checkpoint)

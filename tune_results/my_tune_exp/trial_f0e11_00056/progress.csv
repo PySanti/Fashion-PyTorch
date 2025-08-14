@@ -1,0 +1,2 @@
+accuracy,timestamp,checkpoint_dir_name,should_checkpoint,done,training_iteration,trial_id,date,time_this_iter_s,time_total_s,pid,hostname,node_ip,time_since_restore,iterations_since_restore
+86.41764322916667,1755123229,checkpoint_000000,True,False,1,f0e11_00056,2025-08-13_18-13-49,65.62654256820679,65.62654256820679,31080,Maderfoker,127.0.0.1,65.62654256820679,1

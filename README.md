@@ -1266,3 +1266,220 @@ Mejor accuracy
 ```
 
 ## Carga final del modelo
+
+Finalmente, para lograr cargar el modelo, modificamos la funcion `train_model` para almacenar checkpoints para cada configuracion. Luego, se intentan cargar desde el main a traves de la funcion `load_best_model`.
+
+
+```python
+
+# main.py
+
+import os
+from utils.MLP import MLP
+import torch
+from utils.train_model import train_model
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
+import numpy as np
+from utils.load_base_datasets import load_base_datasets
+from load_best_model import load_best_model
+from utils.generate_dataloaders import generate_dataloaders
+from utils.accuracy import accuracy
+
+
+print(f'Usando dispositivo {torch.cuda.get_device_name(0)}')
+
+train_dataset, val_dataset, test_dataset = load_base_datasets()
+
+try:
+    print("Intentando cargar resultados previos")
+    model, best_trial = load_best_model()
+    _, _ ,test_loader = generate_dataloaders(best_trial.config["batch_size"], train_dataset, val_dataset, test_dataset)
+
+    print("Configuracion del mejor modelo")
+    print(best_trial.config)
+    print(f"Precision en validacion del mejor modelo : {best_trial.metric_analysis['accuracy']['max']}")
+
+    test_acc = []
+    for (X_test_batch, Y_test_batch) in test_loader:
+        X_test_batch = X_test_batch.to("cuda")
+        Y_test_batch = Y_test_batch.to("cuda")
+        outputs = model(X_test_batch)
+        test_acc.append(accuracy(outputs, Y_test_batch))
+
+    print(f"Precision en test del mejor modelo : {np.mean(test_acc)}")
+
+except:
+    search_space = {
+        "base_lr": tune.loguniform(5e-4,5e-2),
+        "batch_size": tune.choice([512, 1024]),
+
+        "l1_size": tune.randint(250, 350),
+        "l1_drop": tune.loguniform(0.25, 0.35),
+
+        "l2_size": tune.randint(450, 650),
+        "l2_drop": tune.loguniform(0.05, 0.15),
+
+        "l3_size": tune.randint(450, 650),
+        "l3_drop": tune.loguniform(0.25, 0.35),
+
+        "l2_rate": tune.loguniform(5e-3, 5e-5),
+        "t_max" : tune.randint(8,15),
+        'max_epochs': 80
+    }
+
+
+
+    scheduler = ASHAScheduler(
+        metric="accuracy",
+        mode="max",
+        max_t=50,            # Número máximo de épocas/iteraciones por trial
+        grace_period=10,      # Mínimo de épocas antes de considerar detener un trial
+        reduction_factor=2   # Factor de reducción de recursos entre etapas
+    )
+
+    analysis = tune.run(
+        tune.with_parameters(train_model, train_dataset=train_dataset, val_dataset=val_dataset),
+        config=search_space,
+        scheduler=scheduler,
+        verbose=10,
+
+        # Número de combinaciones a probar
+        num_samples=75,  
+
+        # recursos
+        resources_per_trial={"cpu": 5, "gpu": 1},
+        max_concurrent_trials=4,
+
+        # almacenamiento
+        name="my_tune_exp",
+        trial_dirname_creator=lambda trial:f"trial_{trial.trial_id}",
+        storage_path=os.path.abspath("./tune_results"),
+        resume=True,
+
+        keep_checkpoints_num=2,       # Máximo de checkpoints a conservar
+        checkpoint_score_attr="accuracy"  # Métrica para seleccionar los mejores
+    )
+    best_config = analysis.get_best_config(metric='accuracy', mode='max')
+    best_accuracy = analysis.get_best_trial(metric='accuracy', mode='max').last_result['accuracy']
+    print("Mejor configuracion")
+    print(best_config)
+    print("Mejor accuracy")
+    print(best_accuracy)
+
+
+```
+
+```python
+
+# load_best_model.py
+
+import torch
+from utils.MLP import MLP  # Importa tu clase de modelo
+from ray.tune import ExperimentAnalysis
+import os
+from utils.MLP import MLP  # Asegúrate de importar tu modelo
+from ray.train.torch import TorchCheckpoint
+
+def load_best_model(experiment_path="~/ray_results/my_tune_exp"):
+    experiment_path = os.path.abspath("./tune_results/my_tune_exp/")
+    os.makedirs(experiment_path, exist_ok=True)
+    analysis = ExperimentAnalysis(experiment_path)
+    best_trial = analysis.get_best_trial(metric="accuracy", mode="max", scope="all")
+    
+    if not best_trial.checkpoint:
+        raise ValueError("El mejor trial no tiene checkpoint")
+    
+    model = MLP(
+        hidden_sizes=[
+            best_trial.config["l1_size"],
+            best_trial.config["l2_size"],
+            best_trial.config["l3_size"]
+        ],
+        dropout_rates=[
+            best_trial.config["l1_drop"],
+            best_trial.config["l2_drop"],
+            best_trial.config["l3_drop"]
+        ]
+    )
+    
+    with best_trial.checkpoint.as_directory() as checkpoint_dir:
+        model_state_dict = torch.load(os.path.join(checkpoint_dir, "model.pt"))
+        model.load_state_dict(model_state_dict)
+
+    model = model.to("cuda")
+    return model, best_trial
+
+```
+
+
+```python
+
+# utils/train_model.py
+
+
+import os
+import numpy as np
+import torch
+from utils.accuracy import accuracy
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from utils.MLP import MLP
+from ray import tune
+import os
+import tempfile
+from pathlib import Path
+import torch
+from ray import tune
+from ray import train
+from ray.tune import Checkpoint
+import ray.cloudpickle as pickle
+
+from utils.generate_dataloaders import generate_dataloaders
+
+def train_model(config, train_dataset, val_dataset):
+    mlp = MLP(
+            hidden_sizes=[config["l1_size"], config["l2_size"], config["l3_size"]],
+            dropout_rates=[config["l1_drop"], config["l2_drop"], config["l3_drop"]]
+            ).to('cuda')
+    loss = torch.nn.CrossEntropyLoss(reduction='mean')
+    optimizer = torch.optim.Adam(mlp.parameters(),lr=config['base_lr'],weight_decay=config['l2_rate'])
+    scheduler = CosineAnnealingLR(optimizer, T_max=config['t_max'])   
+    (train_loader, val_loader, _) = generate_dataloaders(config["batch_size"], train_dataset, val_dataset)
+    for ep in range(config['max_epochs']+1):
+        # entrenamiento
+        batches_train_loss = []
+        mlp.train()
+        for (X_train_batch, Y_train_batch) in train_loader:
+            X_train_batch = X_train_batch.float().to('cuda')
+            Y_train_batch = Y_train_batch.to('cuda')
+            outputs = mlp(X_train_batch)
+            batch_loss = loss(outputs, Y_train_batch)
+            optimizer.zero_grad()
+            batch_loss.backward()
+            optimizer.step()
+            batches_train_loss.append(batch_loss.item())
+        scheduler.step()
+        # validacion
+        mlp.eval()
+        batches_val_loss = []
+        correct_val_samples = []
+
+        with torch.no_grad():
+            for (X_val_batch, Y_val_batch) in val_loader:
+                X_val_batch = X_val_batch.float().to('cuda')
+                Y_val_batch = Y_val_batch.to('cuda')
+                outputs = mlp(X_val_batch)
+                batches_val_loss.append(loss(outputs, Y_val_batch).item())
+                correct_val_samples.append(accuracy(outputs, Y_val_batch))
+    # se almacena un checkpoint (estado del modelo) al final de cada trial
+    with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
+        torch.save(
+            mlp.state_dict(),
+            os.path.join(temp_checkpoint_dir, "model.pt"),
+        )
+        checkpoint = Checkpoint.from_directory(temp_checkpoint_dir)
+        tune.report({"accuracy": np.mean(correct_val_samples)}, checkpoint=checkpoint)
+
+```
+
+La logica de cargar el mejor modelo viene dado por entender que un checkpoint y un trial son dos cosas diferentes: el objeto `best_trial` almacena las metricas y la configuracion mientras que el checkpoint todo el modelo.
